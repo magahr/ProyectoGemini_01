@@ -1,0 +1,5 @@
+// bookstore-api/tsconfig.build.json
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "**/*spec.ts"]
+}
