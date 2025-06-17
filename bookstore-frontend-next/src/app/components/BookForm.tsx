@@ -1,35 +1,36 @@
-// app/components/BookForm.tsx
-"use client"; // Marca este componente como un "Client Component" en Next.js App Router
+// bookstore-frontend-next/src/app/components/BookForm.tsx
+
+'use client'; // Componente de cliente
 
 import React, { useState, useEffect } from 'react';
-import { CreateBookDto, Book } from '../api/external-api'; // Asegúrate de la ruta correcta
+import externalApi, { Book, CreateBookDto, UpdateBookDto } from '../api/external-api';
 
 interface BookFormProps {
-  initialData?: Book; // Datos iniciales para edición
-  onSubmit: (book: CreateBookDto) => void;
-  onCancel: () => void;
+  initialData: Book | null; // Datos del libro si estamos editando
+  onSuccess: () => void; // Callback para después de una operación exitosa
 }
 
-const BookForm: React.FC<BookFormProps> = ({ initialData, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState<CreateBookDto>({
+const BookForm: React.FC<BookFormProps> = ({ initialData, onSuccess }) => {
+  const [formData, setFormData] = useState<CreateBookDto | UpdateBookDto>({
     title: '',
     author: '',
     description: '',
     publicationDate: '',
   });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Carga los datos iniciales si se está editando un libro
   useEffect(() => {
     if (initialData) {
-      const formattedDate = initialData.publicationDate
-        ? new Date(initialData.publicationDate).toISOString().split('T')[0]
-        : '';
       setFormData({
         title: initialData.title,
         author: initialData.author,
         description: initialData.description,
-        publicationDate: formattedDate,
+        publicationDate: initialData.publicationDate.split('T')[0], // Formatear para input type="date"
       });
     } else {
+      // Limpiar formulario si no estamos editando o si initialData se vuelve null
       setFormData({
         title: '',
         author: '',
@@ -40,78 +41,102 @@ const BookForm: React.FC<BookFormProps> = ({ initialData, onSubmit, onCancel }) 
   }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (initialData && initialData.id) {
+        // Modo Edición (Update)
+        await externalApi.updateBook(initialData.id, formData);
+        alert('Libro actualizado exitosamente!');
+      } else {
+        // Modo Creación (Create)
+        await externalApi.createBook(formData as CreateBookDto); // Cast para asegurar tipo CreateBookDto
+        alert('Libro creado exitosamente!');
+      }
+      onSuccess(); // Llama a la función de éxito para limpiar formulario y recargar lista
+    } catch (err) {
+      console.error('Error submitting book:', err);
+      setError('Error al guardar el libro. Por favor, intente de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="mb-8 p-4 border border-gray-300 rounded-lg shadow-sm">
-      <h3 className="text-xl font-semibold mb-4">{initialData ? 'Editar Libro' : 'Crear Nuevo Libro'}</h3>
-      <form onSubmit={handleSubmit} className="grid gap-4">
-        <label className="block">
-          <span className="text-gray-700">Título:</span>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          />
-        </label>
-        <label className="block">
-          <span className="text-gray-700">Autor:</span>
-          <input
-            type="text"
-            name="author"
-            value={formData.author}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          />
-        </label>
-        <label className="block">
-          <span className="text-gray-700">Descripción:</span>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          ></textarea>
-        </label>
-        <label className="block">
-          <span className="text-gray-700">Fecha de Publicación:</span>
-          <input
-            type="date"
-            name="publicationDate"
-            value={formData.publicationDate}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          />
-        </label>
-        <div className="flex space-x-4">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          >
-            {initialData ? 'Guardar Cambios' : 'Crear Libro'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-opacity-50"
-          >
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <p className="text-red-500">{error}</p>}
+      <div>
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700">Título</label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          required
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div>
+        <label htmlFor="author" className="block text-sm font-medium text-gray-700">Autor</label>
+        <input
+          type="text"
+          id="author"
+          name="author"
+          value={formData.author}
+          onChange={handleChange}
+          required
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Descripción</label>
+        <textarea
+          id="description"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          required
+          rows={3}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+        ></textarea>
+      </div>
+      <div>
+        <label htmlFor="publicationDate" className="block text-sm font-medium text-gray-700">Fecha de Publicación</label>
+        <input
+          type="date"
+          id="publicationDate"
+          name="publicationDate"
+          value={formData.publicationDate}
+          onChange={handleChange}
+          required
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {loading ? 'Guardando...' : (initialData ? 'Actualizar Libro' : 'Crear Libro')}
+      </button>
+      {initialData && ( // Muestra botón "Cancelar" solo en modo edición
+        <button
+          type="button"
+          onClick={() => onSuccess()} // Llama a onSuccess para limpiar el formulario
+          className="w-full mt-2 px-4 py-2 bg-gray-400 text-white font-semibold rounded-md shadow-md hover:bg-gray-500 transition-colors"
+        >
+          Cancelar Edición
+        </button>
+      )}
+    </form>
   );
 };
 

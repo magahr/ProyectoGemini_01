@@ -1,81 +1,51 @@
-// src/app/page.tsx
-'use client'; // Esto es necesario para usar hooks de React como useState, useEffect en Next.js App Router
+// bookstore-frontend-next/src/app/page.tsx
 
-import { useState, useEffect } from 'react';
+'use client';
 
-// Define una interfaz para la estructura de tu libro para TypeScript
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  description: string;
-  publicationDate: string; // O Date, dependiendo de cómo lo manejes en el frontend
-}
+import React, { useState, useRef } from 'react';
+import BookForm from './components/BookForm';
+import BookList, { BookListRef } from './components/BookList'; // <--- Importa BookListRef
+import { Book } from './api/external-api';
 
-export default function HomePage() {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export default function Home() {
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  // <--- Ajustar el tipo de useRef para que apunte a BookListRef
+  const bookListRef = useRef<BookListRef | null>(null); 
 
-  // Usa la variable de entorno para la URL base del API
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const handleEditBook = (book: Book) => {
+    setEditingBook(book);
+  };
 
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        if (!API_BASE_URL) {
-          throw new Error("NEXT_PUBLIC_API_BASE_URL no está definida en .env.local");
-        }
-        const response = await fetch(`${API_BASE_URL}/books`);
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-        const data: Book[] = await response.json();
-        setBooks(data);
-      } catch (err) {
-        if (err instanceof Error) {
-            setError(err.message);
-        } else {
-            setError('An unknown error occurred');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBooks();
-  }, [API_BASE_URL]); // Vuelve a ejecutar si la URL base cambia
-
-  if (loading) {
-    return <div className="text-center p-4">Cargando libros...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center p-4 text-red-500">Error: {error}</div>;
-  }
+  const handleSuccess = () => {
+    setEditingBook(null);
+    if (bookListRef.current) {
+      bookListRef.current.fetchBooks(); // Esto ahora debería funcionar
+    }
+  };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold mb-8">Nuestra Biblioteca de Libros</h1>
+    <main className="flex min-h-screen flex-col items-center justify-start p-6 md:p-24 bg-gray-50">
+      <h1 className="text-4xl font-extrabold mb-8 text-indigo-800">
+        Gestión de Librería
+      </h1>
 
-      {books.length === 0 ? (
-        <p>No hay libros disponibles. ¡Crea uno!</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {books.map((book) => (
-            <div key={book.id} className="border p-4 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold">{book.title}</h2>
-              <p className="text-gray-600">Autor: {book.author}</p>
-              <p className="text-gray-700 mt-2">{book.description}</p>
-              <p className="text-sm text-gray-500">
-                Publicación: {new Date(book.publicationDate).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-xl mb-8">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">
+          {editingBook ? 'Editar Libro' : 'Añadir Nuevo Libro'}
+        </h2>
+        <BookForm
+          initialData={editingBook}
+          onSuccess={handleSuccess}
+        />
+      </div>
 
-      {/* Aquí podrías añadir un formulario para crear nuevos libros */}
+      <div className="w-full max-w-2xl">
+        <BookList
+          ref={bookListRef} // Aquí el 'ref' ya no debería dar error de TypeScript
+          onEdit={handleEditBook}
+          onDeleteSuccess={handleSuccess}
+        />
+      </div>
     </main>
   );
 }

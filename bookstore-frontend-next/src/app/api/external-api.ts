@@ -2,7 +2,8 @@
 import axios from 'axios';
 
 // La URL base de tu backend NestJS
-const NESTJS_API_BASE_URL = 'http://localhost:3000/books';
+// ¡CORREGIDO! Ahora solo es la base de la API, sin el endpoint /books
+const NESTJS_API_BASE_URL = 'http://localhost:3000'; 
 
 export interface Book {
   id: number;
@@ -17,27 +18,32 @@ export type UpdateBookDto = Partial<CreateBookDto>;
 
 const externalApi = {
   getBooks: async (): Promise<Book[]> => {
-    const response = await axios.get<Book[]>(NESTJS_API_BASE_URL);
+    // Ahora llama a http://localhost:3000/books
+    const response = await axios.get<Book[]>(`${NESTJS_API_BASE_URL}/books`); 
     return response.data;
   },
 
   getBookById: async (id: number): Promise<Book> => {
-    const response = await axios.get<Book>(`${NESTJS_API_BASE_URL}/${id}`);
+    // Ahora llama a http://localhost:3000/books/:id
+    const response = await axios.get<Book>(`${NESTJS_API_BASE_URL}/books/${id}`); 
     return response.data;
   },
 
   createBook: async (book: CreateBookDto): Promise<Book> => {
-    const response = await axios.post<Book>(NESTJS_API_BASE_URL, book);
+    // Ahora llama a http://localhost:3000/books
+    const response = await axios.post<Book>(`${NESTJS_API_BASE_URL}/books`, book); 
     return response.data;
   },
 
   updateBook: async (id: number, book: UpdateBookDto): Promise<Book> => {
-    const response = await axios.put<Book>(`${NESTJS_API_BASE_URL}/${id}`, book);
+    // Ahora llama a http://localhost:3000/books/:id
+    const response = await axios.put<Book>(`${NESTJS_API_BASE_URL}/books/${id}`, book); 
     return response.data;
   },
 
   deleteBook: async (id: number): Promise<void> => {
-    await axios.delete<void>(`${NESTJS_API_BASE_URL}/${id}`);
+    // Ahora llama a http://localhost:3000/books/:id
+    await axios.delete<void>(`${NESTJS_API_BASE_URL}/books/${id}`); 
   },
 };
 
