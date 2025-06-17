@@ -1,4 +1,4 @@
-// bookstore-api/tsconfig.json
+
 {
   "compilerOptions": {
     "module": "commonjs",
